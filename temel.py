@@ -11,8 +11,7 @@ import torch
 import torchvision
 
 # Load a model
-#model = YOLO("balonx50.pt")
-engine = YOLO('balonx50.engine')
+model = YOLO("balonLarge54.pt")
 #model.to("cuda")
 
 
@@ -24,14 +23,14 @@ label_annotator = sv.LabelAnnotator()
 #    print("This script requires elevated privileges. Please run it with `sudo` or as root.")
 #    #sys.exit(1)
 
-#from MainSystem import USV#
+from MainSystem import USVController
 
-# = USV#("/dev/ttyACM0", baud=115200)
+controller = USVController("COM10", baud=115200)
 print("Arming vehicle...")
-#.arm_vehicle()
+controller.arm_vehicle()
 print("Vehicle armed!")
 print("Setting mode...")
-#.set_mode("MANUAL")
+controller.set_mode("MANUAL")
 print("Mode set!")
 
 
@@ -50,7 +49,7 @@ def initialize_camera():
     # ZED başlatma parametreleri ayarla
     init_params = sl.InitParameters()
     init_params.camera_resolution = sl.RESOLUTION.HD720  # 720p çözünürlük
-    init_params.camera_fps = 60  # 30 FPS
+    init_params.camera_fps = 30  # 30 FPS
     init_params.depth_mode = sl.DEPTH_MODE.NEURAL # depth mode best quality at neural_plus
     init_params.coordinate_units = sl.UNIT.METER #using metric system
     init_params.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE # default for the opencv
@@ -99,8 +98,8 @@ class TimestampHandler:
 
 def nothing(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected):
     if not green_detected and not red_detected and not yellow_detected and not blue_detected and not black_detected:
-        print("ileri")#.set_servo(5,1545)
-        #.set_servo(6,1545)
+        controller.set_servo(5,1545)
+        controller.set_servo(6,1545)
 
 
 # Global olarak while döngüsü dışında tanımlanmalı:
@@ -140,16 +139,16 @@ def greenOnly(frame, depth, center_x, center_y, green_detected, red_detected, ye
                 # 0.75 saniye sağlandığında, derinlik değerine göre hareket komutlarını belirle:
                 if closest_depth < 2:
                     print("Yeşil nesne 2 metreden yakın: geriye gidiliyor.")
-                    #.set_servo(5, 1400)
-                    #.set_servo(6, 1400)
+                    controller.set_servo(5, 1400)
+                    controller.set_servo(6, 1400)
                 elif 2 <= closest_depth <= 5:
                     print("Yeşil nesne 2-5 metre arası: yerinde sola dönülüyor.")
-                    #.set_servo(5, 1400)  # sol motor geriye
-                    #.set_servo(6, 1600)  # sağ motor ileri
+                    controller.set_servo(5, 1400)  # sol motor geriye
+                    controller.set_servo(6, 1600)  # sağ motor ileri
                 elif closest_depth > 5:
                     print("Yeşil nesne 5 metreden uzakta: sadece sağ motor çalıştırılarak hareket ediliyor.")
-                    #.set_servo(5, 1500)  # sol motor nötr
-                    #.set_servo(6, 1550)  # sağ motor hafif ileri
+                    controller.set_servo(5, 1500)  # sol motor nötr
+                    controller.set_servo(6, 1550)  # sağ motor hafif ileri
     else:
         # Eğer yeşil tespiti devam etmiyorsa, zaman sayacı sıfırlanır
         green_detection_start_time = None
@@ -190,16 +189,16 @@ def redOnly(frame, depth, center_x, center_y, green_detected, red_detected, yell
                 # 0.75 saniyelik süre sağlandıktan sonra derinlik değerine göre hareket komutları:
                 if closest_depth < 2:
                     print("Kırmızı nesne 2 metreden yakın: geriye gidiliyor.")
-                    #.set_servo(5, 1400)
-                    #.set_servo(6, 1400)
+                    controller.set_servo(5, 1400)
+                    controller.set_servo(6, 1400)
                 elif 2 <= closest_depth <= 5:
                     print("Kırmızı nesne 2-5 metre arası: yerinde sağa dönülüyor.")
-                    #.set_servo(5, 1600)  # Sol motor ileri
-                    #.set_servo(6, 1400)  # Sağ motor geri
+                    controller.set_servo(5, 1600)  # Sol motor ileri
+                    controller.set_servo(6, 1400)  # Sağ motor geri
                 elif closest_depth > 5:
                     print("Kırmızı nesne 5 metreden uzakta: sadece sol motor çalıştırılarak hareket ediliyor.")
-                    #.set_servo(5, 1550)  # Sol motor hafif ileri
-                    #.set_servo(6, 1500)  # Sağ motor nötr
+                    controller.set_servo(5, 1550)  # Sol motor hafif ileri
+                    controller.set_servo(6, 1500)  # Sağ motor nötr
     else:
         # Kırmızı tespiti devam etmiyorsa zaman sayaç sıfırlanır
         red_detection_start_time = None
@@ -250,8 +249,8 @@ def yellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, y
         # Eğer sarı tespiti 0.75 saniyeden uzun süre devam ediyorsa motor komutunu gönder
         if elapsed >= 0.75:
             print("Sarı nesne tespitinde 0.75 saniye süreklilik sağlandı, direkt geriye basılıyor.")
-            #.set_servo(5, 1400)  # Sol motor: geri
-            #.set_servo(6, 1400)  # Sağ motor: geri
+            controller.set_servo(5, 1400)  # Sol motor: geri
+            controller.set_servo(6, 1400)  # Sağ motor: geri
         else:
             # Stabil tespit bekleniyorsa ekranda süre bilgisi gösterilebilir
             cv2.putText(frame, f"Waiting: {elapsed:.2f}s", (center_x - 50, center_y - 30), cv2.FONT_HERSHEY_SIMPLEX,
@@ -358,8 +357,8 @@ def greenRedOnly(frame, depth, center_x, center_y, green_detected, red_detected,
                 right_command = base_speed - correction
 
             print(f"Açı: {angle_deg:.1f} derece, motor komutları: Sol={left_command}, Sağ={right_command}")
-            #.set_servo(5, left_command)
-            #.set_servo(6, right_command)
+            controller.set_servo(5, left_command)
+            controller.set_servo(6, right_command)
 
 
 def greenYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, yellow_positions):
@@ -463,8 +462,8 @@ def greenYellowOnly(frame, depth, center_x, center_y, green_detected, red_detect
                     right_command = base_speed - correction
 
                 print(f"Açı: {angle_deg:.1f} derece, motor komutları: Sol={left_command}, Sağ={right_command}")
-                #.set_servo(5, left_command)
-                #.set_servo(6, right_command)
+                controller.set_servo(5, left_command)
+                controller.set_servo(6, right_command)
 
 def redYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, yellow_positions, red_positions):
     # Öncelikle sadece kırmızı ve sarı tespit edilmiş mi kontrol edelim
@@ -567,8 +566,8 @@ def redYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected
                     right_command = base_speed - correction
 
                 print(f"Açı: {angle_deg:.1f} derece, motor komutları: Sol={left_command}, Sağ={right_command}")
-                #.set_servo(5, left_command)
-                #.set_servo(6, right_command)
+                controller.set_servo(5, left_command)
+                controller.set_servo(6, right_command)
 
 
 def greenRedYellowOnly(frame, depth, center_x, center_y,
@@ -703,16 +702,16 @@ def redOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_detec
 
         if closest_depth < 2:
                 print("Kırmızı nesne 2 metreden yakın: geriye gidiliyor.")
-                #.set_servo(5, 1400)
-                #.set_servo(6, 1400)
+                controller.set_servo(5, 1400)
+                controller.set_servo(6, 1400)
         elif 2 <= closest_depth <= 5:
                 print("Kırmızı nesne 2-5 metre arası: yerinde sağa dönülüyor.")
-                #.set_servo(5, 1600)  # Sol motor ileri
-                #.set_servo(6, 1400)  # Sağ motor geri
+                controller.set_servo(5, 1600)  # Sol motor ileri
+                controller.set_servo(6, 1400)  # Sağ motor geri
         elif closest_depth > 5:
                 print("Kırmızı nesne 5 metreden uzakta: sadece sol motor çalıştırılarak hareket ediliyor.")
-                #.set_servo(5, 1550)  # Sol motor hafif ileri
-                #.set_servo(6, 1500)  # Sağ motor nötr
+                controller.set_servo(5, 1550)  # Sol motor hafif ileri
+                controller.set_servo(6, 1500)  # Sağ motor nötr
 
 def greenOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected,
               black_detected, green_positions):
@@ -735,16 +734,16 @@ def greenOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_det
 
         if closest_depth < 2:
                 print("Yeşil nesne 2 metreden yakın: geriye gidiliyor.")
-                #.set_servo(5, 1400)
-                #.set_servo(6, 1400)
+                controller.set_servo(5, 1400)
+                controller.set_servo(6, 1400)
         elif 2 <= closest_depth <= 5:
                 print("Yeşil nesne 2-5 metre arası: yerinde sola dönülüyor.")
-                #.set_servo(5, 1400)  # sol motor geriye
-                #.set_servo(6, 1600)  # sağ motor ileri
+                controller.set_servo(5, 1400)  # sol motor geriye
+                controller.set_servo(6, 1600)  # sağ motor ileri
         elif closest_depth > 5:
                 print("Yeşil nesne 5 metreden uzakta: sadece sağ motor çalıştırılarak hareket ediliyor.")
-                #.set_servo(5, 1500)  # sol motor nötr
-                #.set_servo(6, 1550)  # sağ motor hafif ileri
+                controller.set_servo(5, 1500)  # sol motor nötr
+                controller.set_servo(6, 1550)  # sağ motor hafif ileri
 
 def yellowOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected,
               black_detected, yellow_positions):
@@ -770,8 +769,8 @@ def yellowOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_de
     # Ekranın orta noktasına "Geri" yazısı ekleniyor
     cv2.putText(frame, "Going Astern!!", (center_x - 50, center_y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
-    #.set_servo(5, 1400)  # Sol motor: geri
-    #.set_servo(6, 1400)  # Sağ motor: geri
+    controller.set_servo(5, 1400)  # Sol motor: geri
+    controller.set_servo(6, 1400)  # Sağ motor: geri
 
 def greenYellowOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected,
                         black_detected, green_positions, yellow_positions):
@@ -875,8 +874,8 @@ def greenYellowOnlyRecursive(frame, depth, center_x, center_y, green_detected, r
                         right_command = base_speed - correction
 
                     print(f"Açı: {angle_deg:.1f} derece, motor komutları: Sol={left_command}, Sağ={right_command}")
-                    #.set_servo(5, left_command)
-                    #.set_servo(6, right_command)
+                    controller.set_servo(5, left_command)
+                    controller.set_servo(6, right_command)
 
 def redYellowOnlyRecursive(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, yellow_positions, red_positions):
         # --- En yakın kırmızı tespitinin bulunması ---
@@ -976,137 +975,166 @@ def redYellowOnlyRecursive(frame, depth, center_x, center_y, green_detected, red
                     right_command = base_speed - correction
 
                 print(f"Açı: {angle_deg:.1f} derece, motor komutları: Sol={left_command}, Sağ={right_command}")
-                #.set_servo(5, left_command)
-                #.set_servo(6, right_command)
+                controller.set_servo(5, left_command)
+                controller.set_servo(6, right_command)
 
 def main():
     zed = initialize_camera()
     global width
+    # Kamera çözünürlüğünü al
     camera_info = zed.get_camera_information()
     width = camera_info.camera_configuration.resolution.width
     print(width)
     height = camera_info.camera_configuration.resolution.height
     print(height)
+    # Görüntüde merkez noktasını hesapla
     center_x = width // 2
     center_y = height // 2
     print("Kamera çözünürlüğü: ", width, "x", height)
     print("Görüntü orta noktası: ", (center_x, center_y))
 
-    # Sensor timestamp yönetimi
+    # Used to store the sensors timestamp to know if the sensors_data is a new one or not
     ts_handler = TimestampHandler()
 
-    # Görüntü ve derinlik için Mat nesneleri oluşturuluyor
+    # Görüntü ve derinlik verilerini almak için Mat nesneleri oluştur
     image = sl.Mat()
     depth = sl.Mat()
+    # Sensör verisi al
     sensors_data = sl.SensorsData()
 
-    fps_previous_time = time.time()
+    # For FPS calculation
+    fps_previous_time = 0
 
+    # Sonsuz bir döngüde görüntü akışı
     while True:
+        # Kameradan bir yeni kare alın
         if zed.grab() == sl.ERROR_CODE.SUCCESS:
             # Görüntü ve derinlik verilerini al
             zed.retrieve_image(image, sl.VIEW.LEFT)
             zed.retrieve_measure(depth, sl.MEASURE.DEPTH)
-            frame = cv2.cvtColor(image.get_data(), cv2.COLOR_BGRA2BGR)
+            # OpenCV formatına dönüştür
+            frame = cv2.cvtColor(image.get_data(), cv2.COLOR_BGRA2BGR)  # BGRA -> BGR
+            results = model(frame, conf=0.50)[0]
 
-            # YOLO motorundan sonuçlar liste olarak geliyor
-            results = engine.track(source=frame, conf=0.50)
+            # yolo sonuçlarının sv.Detections formatına dönüştürülmesi
+            detections = sv.Detections.from_ultralytics(results)
 
-            # Liste içindeki her bir sonuç üzerinde döngü ile işleme yapıyoruz
-            for result in results:
-                detections = sv.Detections.from_ultralytics(result)
-                frame = bounding_box_annotator.annotate(scene=frame, detections=detections)
-                frame = label_annotator.annotate(scene=frame, detections=detections)
+            # tespitlerin sınırlarının ve etiketlerinin oluşturulması
+            frame = bounding_box_annotator.annotate(scene=frame, detections=detections)
+            frame = label_annotator.annotate(scene=frame, detections=detections)
 
-                # Tespit koordinatlarını ve sınıf id'lerini alıyoruz
-                coordinates = detections.xyxy.tolist()
-                class_ids = detections.class_id.tolist()
+            # tespitlerin koordinatlarının sınıflarının alınması
+            coordinates = detections.xyxy.tolist()
+            class_ids = detections.class_id.tolist()
 
-                # Her tespit kutusunun sağ üst köşesine derinlik değerini yazdırıyoruz
-                for box in coordinates:
-                    x1, y1, x2, y2 = map(int, box)
-                    depth_val = depth.get_value(x2, y1)[1]
-                    if not np.isnan(depth_val):
-                        text = f"{depth_val:.2f} m"
-                        cv2.putText(frame, text, (x2 - 60, y1 + 20), FONT, 0.7, COLOR_RED, 2)
+            # Her tespit kutusunun sağ üst köşesine derinlik değerini yazdırmak için:
+            for box in coordinates:
+                x1, y1, x2, y2 = map(int, box)  # tamsayıya çeviriyoruz
+                # Sağ üst köşe koordinatları: (x2, y1)
+                depth_val = depth.get_value(x2, y1)[1]  # İkinci değer derinlik (metre cinsinden)
+                # Eğer depth değeri geçerliyse (NaN değilse) yazdır
+                if not np.isnan(depth_val):
+                    text = f"{depth_val:.2f} m"
+                    # Yazıyı kutunun sağ üst köşesine ekleyelim; konum ayarını isteğinize göre değiştirebilirsiniz
+                    cv2.putText(frame, text, (x2 - 60, y1 + 20), FONT, 0.7, COLOR_RED, 2)
 
-                # Renk tespit bayrakları ve pozisyonlarını sıfırlıyoruz
-                red_detected = False
-                green_detected = False
-                yellow_detected = False
-                blue_detected = False
-                black_detected = False
+            red_detected = False
+            green_detected = False
+            yellow_detected = False
+            blue_detected = False
+            black_detected = False
 
-                red_positions = []
-                green_positions = []
-                yellow_positions = []
-                blue_positions = []
-                black_positions = []
+            red_positions = []
+            green_positions = []
+            yellow_positions = []
+            blue_positions = []
+            black_positions = []
 
-                # Her tespit için sınıfa göre bayrak ve pozisyon listelerini oluşturuyoruz
-                for i, class_id in enumerate(class_ids):
-                    if class_id == 3:  # Kırmızı
-                        red_detected = True
-                        red_positions.append(coordinates[i])
-                    elif class_id == 4:  # Sarı
-                        yellow_detected = True
-                        yellow_positions.append(coordinates[i])
-                    elif class_id == 2:  # Yeşil
-                        green_detected = True
-                        green_positions.append(coordinates[i])
-                    elif class_id == 1:  # Mavi
-                        blue_detected = True
-                        blue_positions.append(coordinates[i])
-                    elif class_id == 0:  # Siyah
-                        black_detected = True
-                        black_positions.append(coordinates[i])
+            for i, class_id in enumerate(class_ids):
+                if class_id == 3:  # Kırmızı
+                    red_detected = True
+                    red_positions.append(coordinates[i])
+                elif class_id == 4:  # Sarı
+                    yellow_detected = True
+                    yellow_positions.append(coordinates[i])
+                elif class_id == 2:  # Yeşil
+                    green_detected = True
+                    green_positions.append(coordinates[i])
+                elif class_id == 1:  # Mavi
+                    blue_detected = True
+                    blue_positions.append(coordinates[i])
+                elif class_id == 0:  # Siyah
+                    black_detected = True
+                    black_positions.append(coordinates[i])
 
-                # Fonksiyon çağrıları
-                nothing(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected)
-                greenOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions)
-                redOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, red_positions)
-                yellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, yellow_positions)
-                greenRedOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, red_positions)
-                greenYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, yellow_positions)
-                redYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, yellow_positions, red_positions)
-                greenRedYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, red_positions, yellow_positions)
+            nothing(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected)
+            greenOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions)
+            redOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, red_positions)
+            yellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, yellow_positions)
+            greenRedOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, red_positions)
+            greenYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, yellow_positions)
+            redYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, yellow_positions, red_positions)
+            greenRedYellowOnly(frame, depth, center_x, center_y, green_detected, red_detected, yellow_detected, blue_detected, black_detected, green_positions, red_positions,yellow_positions)
 
-            # Sensör verilerini güncelle
-            if zed.get_sensors_data(sensors_data, sl.TIME_REFERENCE.IMAGE):
+            # retrieve the current sensors sensors_data
+            if zed.get_sensors_data(sensors_data, sl.TIME_REFERENCE.IMAGE): #time_reference.image for synchorinzed timestamps
+                # Check if the data has been updated since the last time
+                # IMU is the sensor with the highest rate
                 if ts_handler.is_new(sensors_data.get_imu_data()):
+
+                    # Filtered orientation quaternion
                     quaternion = sensors_data.get_imu_data().get_pose().get_orientation().get()
+                    # Access the magnetometer data
                     magnetometer_data = sensors_data.get_magnetometer_data()
+
+                    # Access the magnetic heading and state
                     magnetic_heading_info = (
                         f"Magnetic Heading: {magnetometer_data.magnetic_heading:.0f} "
                         f"({magnetometer_data.magnetic_heading_state}) "
                         f"[{magnetometer_data.magnetic_heading_accuracy:.0f}]"
                     )
+
                     yaw = quaternion_to_angle(quaternion, "yaw")
                     roll = quaternion_to_angle(quaternion, "roll")
                     pitch = quaternion_to_angle(quaternion, "pitch")
+
                     render_text(frame, f"Yaw: {yaw:.0f}", (frame.shape[1] - 200, 30))
                     render_text(frame, f"Roll: {roll:.0f}", (frame.shape[1] - 200, 60))
                     render_text(frame, f"Pitch: {pitch:.0f}", (frame.shape[1] - 200, 90))
                     render_text(frame, magnetic_heading_info, (frame.shape[1] - 1300, 30))
 
-            # FPS hesaplaması
+            # Orta noktanın derinlik bilgisini al
+            #depth_value = depth.get_value(center_x, center_y)[1]  # Sadece metre cinsinden değeri al
+
+            # Derinlik bilgisini sağ üst köşede göster imu bilgisini sol üst köşede göster
+            #depth_info_text = f"Center Depth: {depth_value:.2f} m" if not np.isnan(depth_value) else "Couldn't Calculate..: NaN"
+            #render_text(frame, depth_info_text, (10, 50))
+            #cv2.circle(frame, (center_x, center_y), DEPTH_CENTER_RADIUS, DEPTH_CENTER_COLOR, -1)
+
+            # Merkez noktasını görselleştir
+            #cv2.circle(frame, (center_x, center_y), 5, (255, 0, 0), -1)
+
+            # Calculate FPS
             fps_current_time = time.time()
             fps = 1 / (fps_current_time - fps_previous_time)
             fps_previous_time = fps_current_time
             cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            # Görüntüyü ekranda göster
-            frame_resized = cv2.resize(frame, (960, 540))
+            # Görüntüyü göster
+            frame_resized = cv2.resize(frame, (960, 540))  # Resize the frame to desired dimensions960, 540
             cv2.imshow("ZED Camera", frame_resized)
+            #avoidBuoys()
 
             k = cv2.waitKey(1)
+
             if k % 256 == 27:
                 print("Esc tuşuna basıldı.. Kapatılıyor..")
+                controller.stop_motors()
                 break
 
+    # Kaynakları serbest bırak ve kamerayı kapat
     cv2.destroyAllWindows()
     zed.close()
-
 
 if __name__ == "__main__":
     main()
